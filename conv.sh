@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -x
+# Usage: ./conv.sh /path/to/media/file.ext /path/to/output/directory
 
 # Parameters to conv.sh
 INPUT_FILE=$1
