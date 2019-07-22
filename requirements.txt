@@ -1,0 +1,4 @@
+tqdm
+gevent
+guessit
+ffmpeg-python

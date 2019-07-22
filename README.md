@@ -8,7 +8,7 @@ Volvo RSE: https://accessories.volvocars.com/en-ph/XC70(08-)/Accessories/Documen
 This is WIP for now while trying to find the optimal quality/size ratio.
 
 Usage:
-```conv.sh /PATH/TO/INPUT.FILE /PATH/TO/OUTPUT/DIRECTORY ```
+```run.sh /path/to/dir/with/media /path/to/output/dir```
 
 Requires Docker to be present.
 
