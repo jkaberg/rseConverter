@@ -6,6 +6,8 @@ import argparse
 import subprocess
 from guessit import guessit
 
+from pprint import pprint
+
 
 class DuplicateString(str):
     def __hash__(self):
@@ -19,6 +21,7 @@ def find_streams(probe, preferred_lang):
     achannels = 0
     found_preferred = False
 
+    # this logic should be redone
     for s in probe['streams']:
         if s.get('codec_type'):
             if s['codec_type'] == 'video':
@@ -26,23 +29,24 @@ def find_streams(probe, preferred_lang):
 
             if s['codec_type'] == 'audio':
                 tags = s.get('tags')
-
-                if tags.get('language'):
-                    achannels = int(s['channels'])
-                    if tags.get('language') == preferred_lang:
-                        found_preferred = True
-                        astream = s['index']
-                        alang = tags.get('language')
-                    elif not found_preferred:
-                        if tags.get('language') == 'eng' and s['channels'] > achannels:
-                            achannels = s['channels']
+                if tags:
+                    if tags.get('language'):
+                        achannels = int(s['channels'])
+                        if tags.get('language') == preferred_lang:
+                            found_preferred = True
                             astream = s['index']
                             alang = tags.get('language')
+                        elif not found_preferred:
+                            if tags.get('language') == 'eng' and s['channels'] > achannels:
+                                achannels = s['channels']
+                                astream = s['index']
+                                alang = tags.get('language')
 
-                if astream == 0:
+                if not tags and astream == 0:
                     astream = s['index']
+                    achannels = s['channels']
 
-    logger.debug('Selected video stream {0} and audio stream {1} (Lang: {2}, Channels: {3})'.format(vstream, astream, alang, achannels))
+    logger.debug('Selected stream (V) {0} and (A) {1} (Language: {2}, Channels: {3})'.format(vstream, astream, alang, achannels))
 
     return vstream, astream
 
@@ -91,6 +95,10 @@ def main(args):
         outfile = '{0}/{1}.avi'.format('/output', new_filename)
         logger.info('File destination: {0}'.format(outfile))
 
+        if os.path.isfile(outfile):
+            logger.warn('File already exists, skipping')
+            continue
+
         probe = ffmpeg.probe(f)
         vstream, astream = find_streams(probe, preferred_lang)
 
@@ -109,19 +117,22 @@ def main(args):
                            'b:a': '192k'
                           })
                 .global_args('-v', 'quiet', '-stats')
-                .overwrite_output()
                 .run())
         except ffmpeg.Error as e:
             logger.error(e.stderr)
             sys.exit(1)
+        except KeyboardInterrupt:
+            if os.path.isfile(outfile):
+                os.remove(outfile)
+            logger.info('Clean up and exit...')
 
         logger.info('Done processing: {0}'.format(new_filename))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('incoming', type=str, help='input directory')
-    parser.add_argument('outgoing', type=str, help='output directory')
+    parser.add_argument('incoming', type=str, help='Directory containing unprocessed media items. Folders will be travsersed')
+    parser.add_argument('outgoing', type=str, help='Directory where processed media items will be stored')
     parser.add_argument("-v", "--verbose", help="Set loglevel to debug", action="store_true")
     args = parser.parse_args()
 
