@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 import ffmpeg
 import logging
 import argparse
@@ -16,6 +17,7 @@ class DuplicateString(str):
 
 def find_streams(probe, preferred_lang):
     vstream = 0
+    vduration = time.strftime('%H:%M:%S', time.gmtime(float(probe['format']['duration'])))
     astream = 0
     alang = 'unknown'
     achannels = 0
@@ -46,7 +48,7 @@ def find_streams(probe, preferred_lang):
                     astream = s['index']
                     achannels = s['channels']
 
-    logger.debug('Selected stream (V) {0} and (A) {1} (Language: {2}, Channels: {3})'.format(vstream, astream, alang, achannels))
+    logger.debug('Selected stream (V) {0} and (A) {1} (Duration {2}, Language: {3}, Channels: {4})'.format(vstream, astream, vduration, alang, achannels))
 
     return vstream, astream
 
@@ -66,9 +68,9 @@ def find_filename(path):
 def find_files(path):
     whitelist = ('.mkv', '.avi', '.mp4')
     paths = []
-    for dirpath, dirs, files in os.walk(path):
+    for dirpath, dirs, files in os.walk(path.encode()):
         for filename in files:
-            fname = os.path.join(dirpath, filename)
+            fname = os.path.join(dirpath, filename).decode()
             if fname.endswith(whitelist):
                 paths.append(fname)
 
@@ -95,17 +97,17 @@ def main(args):
         outfile = '{0}/{1}.avi'.format('/output', new_filename)
         logger.info('File destination: {0}'.format(outfile))
 
-        if os.path.isfile(outfile):
+        if os.path.isfile(outfile.encode()):
             logger.warn('File already exists, skipping')
             continue
 
-        probe = ffmpeg.probe(f)
+        probe = ffmpeg.probe(f.encode())
         vstream, astream = find_streams(probe, preferred_lang)
 
         try:
             (ffmpeg
-                .input(f)
-                .output(outfile,
+                .input(f.encode())
+                .output(outfile.encode(),
                         **{DuplicateString('map'): '0:{0}'.format(vstream),
                            DuplicateString('map'): '0:{0}'.format(astream),
                            'c:v': 'libxvid',
